@@ -16,4 +16,5 @@
 import { useAnalysisStore } from '@/stores/analysis'
 
 const analysisStore = useAnalysisStore()
+console.log('analysisStore', analysisStore)
 </script>
