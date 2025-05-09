@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import http from '@/utils/http'
 
 interface Bond {
   code: string
@@ -50,7 +50,7 @@ export const useMarketStore = defineStore('market', {
     async fetchStocks() {
       this.loading = true
       try {
-        const response = await axios.get('/api/stocks')
+        const response = await http.get('/api/stocks')
         this.stocks = response.data.map((item: any) => ({
           code: item.symbol,
           name: item.name,
@@ -68,7 +68,7 @@ export const useMarketStore = defineStore('market', {
     async fetchBonds() {
       this.loading = true
       try {
-        const response = await axios.get('/api/bonds')
+        const response = await http.get('/api/bonds')
         this.bonds = response.data.map((item: any) => ({
           code: item.bondCode,
           name: item.bondName,
@@ -86,7 +86,7 @@ export const useMarketStore = defineStore('market', {
     async fetchFunds() {
       this.loading = true
       try {
-        const response = await axios.get('/api/funds')
+        const response = await http.get('/api/funds')
         this.funds = response.data.map((item: any) => ({
           code: item.fundCode,
           name: item.fundName,

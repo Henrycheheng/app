@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import http from '@/utils/http'
 
 interface FinancialMetrics {
   roe: number
@@ -23,8 +23,8 @@ export const useAnalysisStore = defineStore('analysis', {
     async fetchFinancialData(stockCode: string) {
       this.loading = true
       try {
-        const response = await axios.get(`/api/financial/${stockCode}`)
-        this.financialData = response.data
+        const response = await http.get(`/api/stocks/financial/${stockCode}`)
+        this.financialData = response?.data
         this.calculateMetrics()
       } catch (err) {
         this.error = '获取财务数据失败'
@@ -35,31 +35,19 @@ export const useAnalysisStore = defineStore('analysis', {
     },
 
     calculateMetrics() {
-      if (!this.financialData) return
+      if (!this.financialData) return;
 
-      const data = this.financialData
+      const data = this.financialData;
       this.metrics = {
-        // ROE = 净利润 / 股东权益
-        roe: data.netProfit / data.shareholderEquity * 100,
-
-        // 负债率 = 总负债 / 总资产
-        debtRatio: data.totalLiabilities / data.totalAssets * 100,
-
-        // 股利支付率
-        dividend: data.dividendPayment / data.netProfit * 100,
-
-        // 经营现金流量
-        cashFlow: data.operatingCashFlow,
-
-        // 投融资决策评估
+        // 确保所有数值计算都转换为数字类型
+        roe: Number((data.netProfit / data.shareholderEquity * 100).toFixed(2)),
+        debtRatio: Number((data.totalLiabilities / data.totalAssets * 100).toFixed(2)),
+        dividend: Number((data.dividendPayment / data.netProfit * 100).toFixed(2)),
+        cashFlow: Number(data.operatingCashFlow),
         investmentDecision: this.evaluateInvestment(data),
-
-        // 资本结构
-        capitalStructure: data.longTermDebt / (data.longTermDebt + data.shareholderEquity) * 100,
-
-        // WACC计算
-        wacc: this.calculateWACC(data)
-      }
+        capitalStructure: Number((data.longTermDebt / (data.longTermDebt + data.shareholderEquity) * 100).toFixed(2)),
+        wacc: Number(this.calculateWACC(data).toFixed(2))
+      };
     },
 
     evaluateInvestment(data: any): string {
@@ -92,24 +80,43 @@ export const useAnalysisStore = defineStore('analysis', {
       if (!this.metrics) return
 
       try {
-        const response = await axios.post('/api/report/generate', {
+        const response = await http.post('/api/report/generate', {
           metrics: this.metrics,
           financialData: this.financialData
         }, {
           responseType: 'blob'
         })
 
-        // 创建下载链接
-        const url = window.URL.createObjectURL(new Blob([response.data]))
-        const link = document.createElement('a')
-        link.href = url
-        link.setAttribute('download', 'financial-analysis-report.pdf')
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      } catch (err) {
-        this.error = '生成报告失败'
-        console.error(err)
+        if (response.status >= 400) {
+          throw new Error('报告生成失败')
+        }
+
+        // 修复1：确保正确获取blob数据
+        const blob = response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], { type: 'application/pdf' });
+
+        // 修复2：创建更可靠的下载链接
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'financial-analysis-report.pdf';
+
+        // 修复3：添加更可靠的事件处理
+        a.onclick = () => {
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+          }, 100);
+        };
+
+        document.body.appendChild(a);
+        a.click();
+
+      } catch (err: any) {
+        this.error = '生成报告失败: ' + (err?.message || '服务器错误');
+        console.error(err);
       }
     }
   }
