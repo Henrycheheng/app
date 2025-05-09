@@ -22,5 +22,6 @@
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  // 移除对 tsconfig.node.json 的引用，因为它可能导致编译问题
+  "references": []
 }
